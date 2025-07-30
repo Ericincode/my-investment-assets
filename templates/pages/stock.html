@@ -1,0 +1,50 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票详情</title>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <header></header>
+    <main>
+        <section class="stock-header">
+            <h1 id="stock-name">Loading...</h1>
+            <div class="price">
+                <span id="stock-price"></span>
+                <span id="stock-change"></span>
+            </div>
+        </section>
+        <section class="stock-chart">
+            <h2>价格图表</h2>
+            <div class="chart-controls">
+                <button data-range="1M">1个月</button>
+                <button data-range="6M">6个月</button>
+                <button data-range="YTD">年初至今</button>
+                <button class="active" data-range="1Y">1年</button>
+                <button data-range="5Y">5年</button>
+                <button data-range="MAX">最长</button>
+            </div>
+            <div id="apex-chart-container" style="height: 400px; border: 1px solid #ddd;"></div>
+        </section>
+        <section class="stock-details">
+            <div class="tab-navigation">
+                <button class="tab-link active" data-tab="financials">关键财务数据</button>
+                <button class="tab-link" data-tab="community">社区分析</button>
+            </div>
+            <div class="tab-content active" id="financials">
+                <div id="financials-data"></div>
+            </div>
+            <div class="tab-content" id="community">
+                <p>关于该股票的用户分析和讨论将放在这里。</p>
+            </div>
+        </section>
+    </main>
+    <footer></footer>
+    <script src="{% static 'js/main.js' %}"></script>
+    <script src="{% static 'js/stock-page.js' %}"></script>
+</body>
+</html>
