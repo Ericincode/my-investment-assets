@@ -8,6 +8,7 @@ from django.db.models import Q, Case, When
 
 
 from django.shortcuts import render
+from datetime import date
 
 def index_view(request):
     return render(request, 'index.html')
@@ -50,12 +51,32 @@ def search_stocks(request):
 def stock_detail_api(request, ticker):
     """
     API endpoint to return all data for a single stock.
+    支持 ?range=1M/6M/1Y/5Y/MAX
     """
-    print(f"--- API HIT: Received request for ticker: {ticker} ---") # 添加此行
-
+    print(f"--- API HIT: Received request for ticker: {ticker} ---")
     stock = get_object_or_404(Stock, pk=ticker.upper())
 
-    historical_data = stock.historical_prices.all()[:252]
+    # 获取周期参数
+    range_param = request.GET.get('range', '1Y').upper()
+    today = date.today()
+    year_start = date(today.year, 1, 1)
+
+    if range_param == 'YTD':
+        historical_data = stock.historical_prices.filter(date__gte=year_start).order_by('-date')
+    else:
+        range_map = {
+            '1M': 21,
+            '6M': 126,
+            '1Y': 252,
+            '5Y': 1260,
+            '10Y': 2520,
+            'MAX': None
+        }
+        count = range_map.get(range_param, 252)
+        if count:
+            historical_data = stock.historical_prices.all().order_by('-date')[:count]
+        else:
+            historical_data = stock.historical_prices.all().order_by('-date')
 
     data = {
         'ticker': stock.ticker,
@@ -75,5 +96,4 @@ def stock_detail_api(request, ticker):
             for price in historical_data
         ]
     }
-    
     return JsonResponse(data)

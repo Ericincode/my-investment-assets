@@ -1,56 +1,4 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let apexChart = null;
-    let fullHistoricalData = [];
-
-    // --- CHART FUNCTION: ApexCharts (Working and Optimized) ---
-    function createApexChart(seriesData) {
-        const chartContainer = document.getElementById('apex-chart-container');
-        if (!chartContainer) return;
-        chartContainer.innerHTML = '';
-
-        const options = {
-            chart: { type: 'area', height: 400, animations: { enabled: false } },
-            series: [{ name: 'Price', data: seriesData }],
-            dataLabels: { enabled: false },
-            xaxis: { type: 'datetime', labels: { datetimeUTC: false } },
-            yaxis: { labels: { formatter: (value) => value ? value.toFixed(2) : '' } },
-            tooltip: { 
-                x: { format: 'dd MMM yyyy' },
-                crosshairs: { show: true, width: 1, stroke: { color: '#b6b6b6', dashArray: 0 } }
-            },
-            stroke: { curve: 'smooth', width: 2 },
-            fill: { type: 'gradient', gradient: { opacityFrom: 0.4, opacityTo: 0.05 } }
-        };
-        
-        apexChart = new ApexCharts(chartContainer, options);
-        apexChart.render();
-    }
-    
-    // --- FUNCTION to update the date range for the ApexChart ---
-    function updateApexChartRange(range) {
-        document.querySelectorAll('.chart-controls button').forEach(b => b.classList.remove('active'));
-        const activeButton = document.querySelector(`.chart-controls button[data-range="${range}"]`);
-        if (activeButton) activeButton.classList.add('active');
-
-        const now = new Date();
-        let min;
-        
-        const earliestDate = fullHistoricalData.length > 0 ? new Date(fullHistoricalData[0].date).getTime() : new Date('2010-01-01').getTime();
-
-        switch (range) {
-            case '1M': min = new Date().setMonth(now.getMonth() - 1); break;
-            case '6M': min = new Date().setMonth(now.getMonth() - 6); break;
-            case 'YTD': min = new Date(new Date().getFullYear(), 0, 1).getTime(); break;
-            case '1Y': min = new Date().setFullYear(now.getFullYear() - 1); break;
-            case '5Y': min = new Date().setFullYear(now.getFullYear() - 5); break;
-            case 'MAX': min = earliestDate; break;
-        }
-        
-        if (apexChart) {
-            apexChart.zoomX(min, new Date().getTime());
-        }
-    }
-
     // --- FUNCTION to handle tab switching ---
     function setupTabs() {
         const tabLinks = document.querySelectorAll('.tab-link');
@@ -67,6 +15,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- FUNCTION to calculate Simple Moving Average (SMA) ---
+    function calcSMA(arr, period) {
+        return arr.map((item, idx, all) => {
+            if (idx < period - 1) return [new Date(item.date).getTime(), null];
+            const closes = all.slice(idx - period + 1, idx + 1).map(i => parseFloat(i.close));
+            if (closes.some(isNaN)) return [new Date(item.date).getTime(), null];
+            const sum = closes.reduce((a, b) => a + b, 0);
+            return [new Date(item.date).getTime(), sum / period];
+        });
+    }
+
     // --- MAIN INITIALIZATION FUNCTION FOR THE PAGE ---
     function initializeStockPage() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -79,7 +38,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                // --- THIS IS THE CRITICAL CODE THAT WAS MISSING ---
+                console.log('API返回数据:', data);
                 const formatNumber = (num, decimals = 2) => {
                     const parsed = parseFloat(num);
                     return !isNaN(parsed) ? parsed.toFixed(decimals) : 'N/A';
@@ -104,21 +63,84 @@ document.addEventListener('DOMContentLoaded', function() {
                         <li><strong>每股收益 (EPS):</strong> ${formatNumber(data.eps)}</li>
                     </ul>
                 `;
-                // --- END OF MISSING CODE ---
-                
-                if (data.historical && data.historical.length > 0) {
-                    fullHistoricalData = data.historical.sort((a,b) => new Date(a.date) - new Date(b.date));
-                    const seriesDataForApex = fullHistoricalData.map(d => [new Date(d.date).getTime(), parseFloat(d.close)]);
-                    
-                    createApexChart(seriesDataForApex);
-                    
-                    document.querySelectorAll('.chart-controls button').forEach(button => {
-                        button.addEventListener('click', () => updateApexChartRange(button.dataset.range));
-                    });
-                    updateApexChartRange('1Y');
-                } else {
-                    document.getElementById('apex-chart-container').innerText = "No historical data for chart.";
+
+                // TradingView 图表替换
+                const chartContainer = document.getElementById('apex-chart-container');
+                console.log('图表容器:', chartContainer);
+                if (chartContainer) {
+                    if (!Array.isArray(data.historical) || data.historical.length === 0) {
+                        console.warn('历史数据为空，无法显示图表');
+                        chartContainer.innerHTML = "暂无历史数据，无法显示图表。";
+                        return;
+                    }
+
+                    const series = [
+                        {
+                            name: '收盘价',
+                            data: data.historical.map(item => [new Date(item.date).getTime(), item.close])
+                        },
+                        {
+                            name: '5日均线',
+                            data: calcSMA(data.historical, 5)
+                        },
+                        {
+                            name: '120日均线',
+                            data: calcSMA(data.historical, 120)
+                        }
+                    ];
+
+                    console.log('series:', series);
+
+                    const isFullscreen = document.fullscreenElement && document.fullscreenElement.classList.contains('stock-chart');
+                    const chartHeight = isFullscreen ? '80%' : 400;
+
+                    const options = {
+                        chart: {
+                            type: 'line',
+                            height: chartHeight,
+                            zoom: { enabled: true }
+                        },
+                        series: series,
+                        colors: ['#008FFB', '#00E396', '#FEB019'],
+                        stroke: { width: [1, 1, 1] },
+                        xaxis: {
+                            type: 'datetime',
+                            labels: {
+                                datetimeFormatter: {
+                                    year: 'yyyy-M-d',
+                                    month: 'yyyy-M-d',
+                                    day: 'yyyy-M-d',
+                                    hour: 'yyyy-M-d'
+                                }
+                            }
+                        },
+                        yaxis: {
+                            tooltip: { enabled: true },
+                            labels: {
+                                formatter: function(val) {
+                                    return Math.round(val);
+                                }
+                            }
+                        },
+                        tooltip: { x: { format: 'yyyy-M-d' } },
+                        legend: {
+                            show: true,
+                            markers: { width: 16, height: 4, radius: 2 },
+                            showForSingleSeries: true,
+                            onItemClick: { toggleDataSeries: true },
+                            onItemHover: { highlightDataSeries: true }
+                        }
+                    };
+
+                    chartContainer.innerHTML = "";
+                    const chart = new ApexCharts(chartContainer, options);
+                    chart.render();
                 }
+
+                console.log('5日均线数据前10:', calcSMA(data.historical, 5).slice(0, 10));
+                console.log('5日均线数据后10:', calcSMA(data.historical, 5).slice(-10));
+                console.log('120日均线数据前130:', calcSMA(data.historical, 120).slice(0, 130));
+                console.log('120日均线数据后10:', calcSMA(data.historical, 120).slice(-10));
 
                 setupTabs();
             })
@@ -128,5 +150,129 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
 
+    function loadChartWithRange(range) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const ticker = urlParams.get('ticker');
+        fetch(`/api/stock/${ticker}/?range=${range}`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('周期切换，收到数据:', data); // 调试日志
+                renderChart(data);
+            });
+    }
+
+    document.querySelectorAll('.chart-controls button').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.chart-controls button').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            loadChartWithRange(btn.getAttribute('data-range'));
+        });
+    });
+    // 缺省改为10年
+    loadChartWithRange('10Y');
+
+    let lastChartData = null;
+    let chart = null; // 放在最顶部
+
+    function renderChart(data) {
+        console.log('渲染图表，数据:', data); // 调试日志
+        lastChartData = data; // 修正：每次渲染都保存最新数据
+        const isFullscreen = document.fullscreenElement && document.fullscreenElement.classList.contains('stock-chart');
+        const chartHeight = isFullscreen ? '80%' : 400;
+
+        const series = [
+            {
+                name: '收盘价',
+                data: data.historical.map(item => [new Date(item.date).getTime(), item.close])
+            },
+            {
+                name: '5日均线',
+                data: calcSMA(data.historical, 5)
+            },
+            {
+                name: '120日均线',
+                data: calcSMA(data.historical, 120)
+            }
+        ];
+        console.log('series:', series);
+
+        const options = {
+            chart: {
+                type: 'line',
+                height: chartHeight,
+                zoom: { enabled: true }
+            },
+            series: series,
+            colors: ['#008FFB', '#00E396', '#FEB019'],
+            stroke: { width: [1, 1, 1] },
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    datetimeFormatter: {
+                        year: 'yyyy-M-d',
+                        month: 'yyyy-M-d',
+                        day: 'yyyy-M-d',
+                        hour: 'yyyy-M-d'
+                    }
+                }
+            },
+            yaxis: {
+                tooltip: { enabled: true },
+                labels: {
+                    formatter: function(val) {
+                        return Math.round(val);
+                    }
+                }
+            },
+            tooltip: { x: { format: 'yyyy-M-d' } },
+            legend: {
+                show: true,
+                markers: { width: 16, height: 4, radius: 2 },
+                showForSingleSeries: true,
+                onItemClick: { toggleDataSeries: true },
+                onItemHover: { highlightDataSeries: true }
+            }
+        };
+
+        const chartContainer = document.getElementById('apex-chart-container');
+        chartContainer.innerHTML = "";
+        if (chart) {
+            chart.destroy();
+        }
+        chart = new ApexCharts(chartContainer, options);
+        chart.render();
+    }
+
+    const fullscreenBtn = document.getElementById('fullscreen-chart-btn');
+    fullscreenBtn.addEventListener('click', function() {
+        const chartSection = document.querySelector('.stock-chart');
+        if (!document.fullscreenElement) {
+            chartSection.requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    });
+
+    // 监听全屏状态变化，切换按钮文本
+    document.addEventListener('fullscreenchange', function() {
+        console.log('全屏切换，lastChartData:', lastChartData);
+        if (document.fullscreenElement && document.fullscreenElement.classList.contains('stock-chart')) {
+            fullscreenBtn.textContent = '返回';
+        } else {
+            fullscreenBtn.textContent = '全屏显示';
+        }
+        // 只重新渲染图表，不重新请求数据
+        if (lastChartData) {
+            renderChart(lastChartData);
+        }
+    });
+
     initializeStockPage();
+
+    // 监听窗口大小变化（包括全屏时），自动刷新图表高度
+    window.addEventListener('resize', function() {
+        if (document.fullscreenElement && lastChartData) {
+            renderChart(lastChartData);
+        }
+    });
 });

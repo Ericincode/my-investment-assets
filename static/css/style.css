@@ -8,6 +8,11 @@ body {
     color: #333;
 }
 
+/* 保证全屏时所有父容器高度为100% */
+html, body {
+    height: 100%;
+}
+
 /* --- 1. 页头与导航栏样式 --- */
 header {
     background-color: #ffffff;
@@ -50,7 +55,6 @@ header nav {
     border-color: #4a90e2;
     box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
 }
-
 
 /* --- 2. 主要内容与版块样式 --- */
 main {
@@ -256,3 +260,28 @@ footer {
         border-radius: 2px;
     }
 }
+
+/* 可加在 style.css */
+.stock-chart {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#apex-chart-container {
+    flex: 0 0 80%;
+    height: 80%;
+    width: 100%;
+    min-height: 320px;
+}
+
+.stock-chart:fullscreen {
+    height: 100vh !important;
+}
+
+.stock-chart:fullscreen #apex-chart-container {
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 0 !important;
+}
+
