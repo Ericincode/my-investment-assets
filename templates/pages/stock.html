@@ -27,10 +27,29 @@
                 <button data-range="1Y">1年</button>
                 <button data-range="10Y" class="active">10年</button>
                 <button data-range="MAX">最长</button>
-                <button id="fullscreen-chart-btn" style="float:right;">全屏显示</button>
+                <button id="fullscreen-chart-btn" class="fullscreen-btn">全屏显示</button>
             </div>
-            <div id="apex-chart-container" style="height: 400px; border: 1px solid #ddd;"></div>
+            <!-- 移除了内联样式 -->
+            <div id="apex-chart-container"></div>
         </section>
+
+        <!-- 新增：股票与QQQ比值趋势图表模块 -->
+        <section class="stock-qqq-ratio-chart">
+            <!-- 移除了内联样式 -->
+            <h2>与 QQQ 的比值趋势</h2>
+            <div class="chart-controls">
+                <button data-ratio-range="1M">1个月</button>
+                <button data-ratio-range="6M">6个月</button>
+                <button data-ratio-range="YTD">年初至今</button>
+                <button data-ratio-range="1Y">1年</button>
+                <button data-ratio-range="10Y" class="active">10年</button>
+                <button data-ratio-range="MAX">最长</button>
+                <button id="fullscreen-ratio-chart-btn" class="fullscreen-btn">全屏显示</button>
+            </div>
+            <!-- 移除了内联样式 -->
+            <div id="apex-ratio-chart-container"></div>
+        </section>
+
         <section class="stock-details">
             <div class="tab-navigation">
                 <button class="tab-link active" data-tab="financials">关键财务数据</button>

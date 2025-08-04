@@ -1,4 +1,6 @@
-/* 通用 Body 和字体样式 */
+/* style.css */
+
+/* --- 0. 通用 Body 和字体样式 --- */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
@@ -6,11 +8,6 @@ body {
     padding: 0;
     background-color: #f4f7f6;
     color: #333;
-}
-
-/* 保证全屏时所有父容器高度为100% */
-html, body {
-    height: 100%;
 }
 
 /* --- 1. 页头与导航栏样式 --- */
@@ -30,6 +27,7 @@ header nav {
     width: 90%;
     max-width: 1200px;
     margin: 0 auto;
+    flex-wrap: wrap; /* 允许换行，适配移动端 */
 }
 
 .logo a {
@@ -37,88 +35,6 @@ header nav {
     font-weight: bold;
     color: #2c3e50;
     text-decoration: none;
-}
-
-/* 更新后的搜索框样式 */
-.search-bar {
-    position: relative;
-}
-
-.search-bar input {
-    width: 300px;
-    padding: 8px;
-    border: 1px solid #ccc;
-    outline: none;
-}
-
-.search-bar input:focus {
-    border-color: #4a90e2;
-    box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
-}
-
-/* --- 2. 主要内容与版块样式 --- */
-main {
-    width: 90%;
-    max-width: 1200px;
-    margin: 20px auto 0;
-}
-
-section {
-    background-color: #ffffff;
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 20px;
-}
-
-.hero {
-    text-align: center;
-    background-color: #2c3e50;
-    color: #ffffff;
-    padding: 40px 20px;
-}
-
-.hero h1 {
-    margin: 0;
-    font-size: 2.5em;
-}
-
-/* --- 3. 页脚样式 --- */
-footer {
-    text-align: center;
-    margin-top: 40px;
-    padding: 20px;
-    color: #777;
-}
-
-/* --- 4. 自动补全搜索结果样式 --- */
-.search-results {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    background-color: #ffffff;
-    border: 1px solid #ccc;
-    border-top: none;
-    border-radius: 0 0 4px 4px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    max-height: 300px;
-    overflow-y: auto;
-    z-index: 10;
-}
-
-.result-item {
-    padding: 10px;
-    cursor: pointer;
-}
-
-.result-item:hover {
-    background-color: #f4f7f6;
-}
-
-/* --- 5. 响应式设计样式 --- */
-.menu-toggle {
-    display: none; /* 桌面端默认隐藏 */
 }
 
 .nav-links {
@@ -138,14 +54,116 @@ footer {
     font-weight: 500;
 }
 
-
-#stock-chart-container {
-    border: 1px solid #ddd; /* 添加一个浅灰色边框 */
-    position: relative; /* 对Logo的定位很重要 */
+.search-bar {
+    position: relative;
 }
 
-/* --- 图表控制样式 --- */
+.search-bar input {
+    width: 300px;
+    padding: 8px;
+    border: 1px solid #ccc;
+    outline: none;
+}
+
+.search-bar input:focus {
+    border-color: #4a90e2;
+    box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+}
+
+.menu-toggle {
+    display: none; /* 桌面端默认隐藏 */
+}
+
+/* --- 响应式设计与汉堡菜单 --- */
+@media (max-width: 768px) {
+    .search-bar {
+        order: 3;
+        width: 100%;
+        margin-top: 10px;
+    }
+    
+    .search-bar input {
+        width: 100%;
+        box-sizing: border-box; /* 确保 padding 不会使宽度溢出 */
+    }
+
+    .nav-links {
+        display: none;
+        flex-direction: column;
+        width: 100%;
+        text-align: center;
+        order: 2; /* 位于 Logo 和搜索框之间 */
+    }
+
+    .nav-links.menu-open {
+        display: flex;
+    }
+
+    .nav-links li {
+        margin: 15px 0;
+    }
+
+    .menu-toggle {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        width: 30px;
+        height: 25px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        padding: 0;
+        order: 1; /* 让它显示在右侧 */
+    }
+    
+    .hamburger-bar {
+        width: 100%;
+        height: 3px;
+        background-color: #333;
+        border-radius: 2px;
+    }
+}
+
+
+/* --- 2. 主要内容与版块 --- */
+main {
+    width: 90%;
+    max-width: 1200px;
+    margin: 20px auto 0;
+}
+
+section {
+    background-color: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 20px;
+}
+
+footer {
+    text-align: center;
+    margin-top: 40px;
+    padding: 20px;
+    color: #777;
+}
+
+/* --- 3. 股票详情页特定样式 --- */
+#apex-chart-container, #apex-ratio-chart-container {
+    height: 400px;
+    border: 1px solid #ddd;
+}
+
+.stock-qqq-ratio-chart {
+    margin-top: 32px;
+}
+
+.stock-qqq-ratio-chart h2 {
+    margin-bottom: 8px;
+}
+
 .chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     margin-bottom: 15px;
 }
 
@@ -154,9 +172,11 @@ footer {
     border: 1px solid #ddd;
     padding: 6px 12px;
     margin-right: 5px;
+    margin-bottom: 5px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    transition: background-color 0.2s;
 }
 
 .chart-controls button:hover {
@@ -169,8 +189,10 @@ footer {
     border-color: #2c3e50;
 }
 
+.chart-controls .fullscreen-btn {
+    margin-left: auto;
+}
 
-/* --- 6. 标签页界面样式 --- */
 .tab-navigation {
     display: flex;
     border-bottom: 2px solid #ddd;
@@ -183,105 +205,42 @@ footer {
     padding: 15px 20px;
     cursor: pointer;
     font-size: 16px;
-    font-weight: 500;
-    color: #555;
     position: relative;
-    bottom: -2px; /* 与底边框对齐 */
+    bottom: -2px;
 }
 
 .tab-link.active {
     color: #2c3e50;
+    font-weight: 500;
     border-bottom: 2px solid #2c3e50;
 }
 
 .tab-content {
-    display: none; /* 默认隐藏所有标签页内容 */
+    display: none;
 }
 
 .tab-content.active {
-    display: block; /* 只显示活动的标签页内容 */
+    display: block;
 }
 
-/* 针对移动端屏幕的媒体查询 */
-
-@media (max-width: 768px) {
-    /* 允许页头项目换行 */
-    header nav {
-        flex-wrap: wrap;
-        justify-content: space-between;
-    }
-
-    /* 让搜索框在自己的一行上占据全部宽度 */
-    .search-bar {
-        order: 3; /* 强制它成为flex项目的最后一个 */
-        width: 100%;
-        margin-top: 10px;
-    }
-
-    /* 隐藏桌面导航链接 */
-    .nav-links {
-        display: none;
-        position: absolute;
-        top: 60px;
-        left: 0;
-        width: 100%;
-        background-color: #fff;
-        flex-direction: column;
-        text-align: center;
-        border-bottom: 1px solid #ddd;
-    }
-
-    /* 当菜单打开时显示导航链接 */
-    .nav-links.menu-open {
-        display: flex;
-    }
-
-    .nav-links li {
-        margin: 15px 0;
-    }
-
-    /* 显示汉堡菜单按钮并设置样式 */
-    .menu-toggle {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around;
-        width: 30px;
-        height: 25px;
-        background: transparent;
-        border: none;
-        cursor: pointer;
-        padding: 0;
-    }
-    
-    .hamburger-bar {
-        width: 100%;
-        height: 3px;
-        background-color: #333;
-        border-radius: 2px;
-    }
-}
-
-/* 可加在 style.css */
-.stock-chart {
+/* --- 4. 原生全屏样式 --- */
+/* 当 section 元素进入真正的全屏模式时应用这些样式 */
+.stock-chart:fullscreen,
+.stock-qqq-ratio-chart:fullscreen {
     display: flex;
     flex-direction: column;
+    padding: 20px;
+    background-color: #ffffff; /* 确保全屏时有白色背景 */
+    box-sizing: border-box;
     height: 100%;
-}
-
-#apex-chart-container {
-    flex: 0 0 80%;
-    height: 80%;
     width: 100%;
-    min-height: 320px;
 }
 
-.stock-chart:fullscreen {
-    height: 100vh !important;
-}
+/* 在全屏模式下，让图表容器自动伸展以填充所有可用空间 */
+.stock-chart:fullscreen #apex-chart-container,
+.stock-qqq-ratio-chart:fullscreen #apex-ratio-chart-container {
+    flex-grow: 1; /* 关键：让图表容器占据所有剩余的垂直空间 */
+    height: auto !important; /* 覆盖原有的固定高度 */
+    min-height: 0; /* <-- 新增这一行 */
 
-.stock-chart:fullscreen #apex-chart-container {
-    flex: 1 1 auto;
-    height: 100% !important;
-    min-height: 0 !important;
 }
-
