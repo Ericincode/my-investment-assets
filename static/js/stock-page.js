@@ -43,6 +43,27 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // 新增：计算线性回归趋势线
+    function calcTrendLine(data) {
+        if (!data || data.length < 2) return [];
+        const x = Array.from({ length: data.length }, (_, i) => i);
+        const y = data.map(p => p.ratio);
+
+        const sumX = x.reduce((a, b) => a + b, 0);
+        const sumY = y.reduce((a, b) => a + b, 0);
+        const sumXY = x.reduce((a, i) => a + x[i] * y[i], 0);
+        const sumXX = x.reduce((a, i) => a + x[i] * x[i], 0);
+        const n = data.length;
+
+        const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+        const intercept = (sumY - slope * sumX) / n;
+
+        return data.map((point, i) => [
+            new Date(point.date).getTime(),
+            intercept + slope * i
+        ]);
+    }
+
     // 核心类：用于管理股票数据获取和状态轮询
     class StockDataManager {
         constructor(ticker) {
@@ -51,19 +72,50 @@ document.addEventListener('DOMContentLoaded', function() {
             this.maxRetries = 30;
             this.retryCount = 0;
             this.fullStockData = null;
+            this.fullRatioData = null; // 新增：初始化比值数据
         }
 
-        async fetchStockData(range = '10Y') {
+        updateHeader(data) {
+            const stockNameEl = document.getElementById('stock-name');
+            const stockPriceEl = document.getElementById('stock-price');
+            const stockChangeEl = document.getElementById('stock-change');
+
+            if (stockNameEl) stockNameEl.textContent = data.name || this.ticker;
+            
+            if (stockPriceEl) {
+                stockPriceEl.textContent = data.price ? `$${Number(data.price).toFixed(2)}` : 'N/A';
+            }
+
+            if (stockChangeEl) {
+                if (data.change && data.change_percent) {
+                    const change = Number(data.change);
+                    const changePercent = Number(data.change_percent);
+                    const sign = change >= 0 ? '+' : '';
+                    stockChangeEl.textContent = `${sign}${change.toFixed(2)} (${sign}${changePercent.toFixed(2)}%)`;
+                    stockChangeEl.className = 'stock-change'; // 重置 class
+                    stockChangeEl.classList.add(change >= 0 ? 'positive' : 'negative');
+                } else {
+                    stockChangeEl.textContent = '';
+                }
+            }
+        }
+
+        // 修改：默认范围改为 MAX
+        async fetchStockData(range = 'MAX') {
             try {
                 const response = await fetch(`/api/stocks/${this.ticker}/?range=${range}`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const data = await response.json();
-                
+                this.updateHeader(data);
+
                 if (data.downloading) {
                     this.showDownloadingStatus();
                     this.startPolling();
                 } else if (data.historical && data.historical.length > 0) {
                     this.fullStockData = data;
-                    this.renderChart(data);
+                    // 修改：传入默认范围
+                    this.renderChart(data, range); 
+                    this.fetchAndRenderRatioChart();
                 } else {
                     this.showNoDataMessage();
                 }
@@ -120,6 +172,114 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
+        // 新增：获取并渲染比值图表
+        async fetchAndRenderRatioChart() {
+            // 修改：动态设置比值图标题
+            const ratioTitleEl = document.getElementById('ratio-chart-title');
+            if (ratioTitleEl) {
+                ratioTitleEl.textContent = `${this.ticker} 与 QQQ 的比值趋势`;
+            }
+
+            try {
+                const response = await fetch(`/api/stock-vs-qqq-ratio/${this.ticker}/`);
+                const data = await response.json();
+                if (data.ratio_data && data.ratio_data.length > 0) {
+                    this.fullRatioData = data.ratio_data;
+                    // 修改：默认加载 MAX 范围
+                    this.renderRatioChart('MAX'); 
+                    this.setupRatioChartButtons();
+                } else {
+                    document.getElementById('apex-ratio-chart-container').innerHTML = `<p>无法生成与QQQ的比值图。</p>`;
+                }
+            } catch (error) {
+                console.error('获取比值数据失败:', error);
+                document.getElementById('apex-ratio-chart-container').innerHTML = `<p>获取比值数据时出错。</p>`;
+            }
+        }
+
+        // 新增：渲染比值图表
+        renderRatioChart(range = '最长') {
+            const container = document.getElementById('apex-ratio-chart-container');
+            if (!container || !this.fullRatioData) return;
+
+            const filteredData = this.filterRatioDataByRange(this.fullRatioData, range);
+
+            const seriesData = filteredData.map(item => [new Date(item.date).getTime(), item.ratio]);
+            const trendData = calcTrendLine(filteredData);
+
+            const options = {
+                series: [{
+                    name: '比值',
+                    data: seriesData
+                }, {
+                    name: '趋势线',
+                    data: trendData
+                }],
+                // 移除: chart: { type: 'line', height: 350, animations: { enabled: false } },
+                chart: { type: 'line', animations: { enabled: false } }, // 修正：移除 height
+                stroke: { width: [2, 2], curve: 'straight', dashArray: [0, 5] },
+                colors: ['#FF4560', '#775DD0'],
+                title: { text: `${this.ticker} / QQQ 比值趋势`, align: 'left' },
+                xaxis: { type: 'datetime' },
+                yaxis: { labels: { formatter: (val) => val.toFixed(3) } },
+                tooltip: { x: { format: 'yyyy-MM-dd' } }
+            };
+
+            if (ratioChart) {
+                ratioChart.updateOptions(options);
+            } else {
+                ratioChart = new ApexCharts(container, options);
+                ratioChart.render();
+            }
+        }
+
+        // 新增：为比值图表设置独立的按钮
+        setupRatioChartButtons() {
+            const rangeButtons = document.querySelectorAll('.ratio-chart-controls button[data-ratio-range]');
+            rangeButtons.forEach(btn => {
+                if (btn.dataset.listenerAttached) return;
+                btn.dataset.listenerAttached = 'true';
+
+                btn.addEventListener('click', () => {
+                    rangeButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const range = btn.dataset.ratioRange;
+                    if (this.fullRatioData) {
+                        this.renderRatioChart(range);
+                    }
+                });
+            });
+        }
+
+        // 新增：根据范围过滤比值数据
+        filterRatioDataByRange(data, range) {
+            if (range === '最长' || range === 'MAX') return data; // 修正：也处理 MAX
+            
+            let startDate;
+            const now = new Date(); // 基准日期
+
+            switch(range) {
+                case 'YTD': 
+                    startDate = new Date(now.getFullYear(), 0, 1); 
+                    break;
+                case '1M': 
+                    startDate = new Date(new Date().setMonth(now.getMonth() - 1)); 
+                    break;
+                case '6M': 
+                    startDate = new Date(new Date().setMonth(now.getMonth() - 6)); 
+                    break;
+                case '1Y': 
+                    startDate = new Date(new Date().setFullYear(now.getFullYear() - 1)); 
+                    break;
+                case '10Y': 
+                    startDate = new Date(new Date().setFullYear(now.getFullYear() - 10)); 
+                    break;
+                default: 
+                    return data;
+            }
+            return data.filter(item => new Date(item.date) >= startDate);
+        }
+
         showSuccess(recordCount) {
             const container = document.getElementById('apex-chart-container');
             container.innerHTML = `
@@ -145,7 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = `<div class="download-status"><h3>错误</h3><p>${message}</p></div>`;
         }
 
-        renderChart(data) {
+        renderChart(data, range) { // 修改：接收 range 参数
             if (mainChart) {
                 mainChart.destroy();
                 mainChart = null;
@@ -160,81 +320,145 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // 新增：调用增长率计算函数
+            this.calculateAndDisplayGrowth(historicalData, range);
+
             const options = this.getChartOptions(data);
             mainChart = new ApexCharts(chartContainer, options);
             mainChart.render();
             this.setupRangeButtons();
         }
 
+        // 新增：计算并显示增长率的函数
+        calculateAndDisplayGrowth(historicalData, range) {
+            const container = document.getElementById('growth-rate-info');
+            if (!container) return;
+
+            if (!historicalData || historicalData.length < 2) {
+                container.textContent = '';
+                return;
+            }
+
+            const startData = historicalData[0];
+            const endData = historicalData[historicalData.length - 1];
+
+            const startPrice = startData.close;
+            const endPrice = endData.close;
+
+            const startDate = new Date(startData.date);
+            const endDate = new Date(endData.date);
+
+            const years = (endDate - startDate) / (1000 * 60 * 60 * 24 * 365.25);
+
+            if (years <= 0 || startPrice <= 0) {
+                container.textContent = '';
+                return;
+            }
+
+            const totalGrowth = (endPrice / startPrice) - 1;
+            const cagr = (Math.pow(endPrice / startPrice, 1 / years)) - 1;
+
+            // 将 YTD, 1M 等转换为中文
+            const rangeMap = {'YTD': '年初至今', '1M': '1个月', '6M': '6个月', '1Y': '1年', '10Y': '10年'};
+            let rangeText = rangeMap[range] || `${years.toFixed(1)}年`;
+            if (range === 'MAX') rangeText = `${years.toFixed(1)}年`;
+
+
+            container.innerHTML = `<strong>${rangeText}</strong>增长率: <strong>${(totalGrowth * 100).toFixed(2)}%</strong>，年复合增长率: <strong>${(cagr * 100).toFixed(2)}%</strong>`;
+        }
+
         async updateChartWithRange(range) {
-            await this.fetchStockData(range);
+            if (!this.fullStockData) {
+                await this.fetchStockData(range);
+                return;
+            }
+            
+            const filteredHistoricalData = this.filterDataByRange(this.fullStockData.historical, range);
+            const filteredData = {
+                ...this.fullStockData,
+                historical: filteredHistoricalData
+            };
+            // 修改：传入当前范围
+            this.renderChart(filteredData, range);
+        }
+
+        filterDataByRange(data, range) {
+            // 修正：此函数现在接收一个数组
+            const historicalData = data || [];
+            if (range === '最长' || range === 'MAX') return historicalData;
+
+            let startDate;
+            const now = new Date(); // 基准日期
+
+            switch(range) {
+                case 'YTD':
+                    startDate = new Date(now.getFullYear(), 0, 1);
+                    break;
+                case '1M':
+                    startDate = new Date(new Date().setMonth(now.getMonth() - 1));
+                    break;
+                case '6M':
+                    startDate = new Date(new Date().setMonth(now.getMonth() - 6));
+                    break;
+                case '1Y':
+                    startDate = new Date(new Date().setFullYear(now.getFullYear() - 1));
+                    break;
+                case '10Y':
+                    startDate = new Date(new Date().setFullYear(now.getFullYear() - 10));
+                    break;
+                default:
+                    return historicalData;
+            }
+
+            return historicalData.filter(item => new Date(item.date) >= startDate);
         }
         
         setupRangeButtons() {
-            const controls = document.querySelector('.stock-chart .chart-controls');
-            // 使用事件委托，避免重复绑定事件
-            if (controls && !controls.dataset.listenerAttached) {
-                controls.addEventListener('click', (event) => {
-                    const button = event.target.closest('button[data-range]');
-                    if (button) {
-                        controls.querySelectorAll('button[data-range]').forEach(btn => btn.classList.remove('active'));
-                        button.classList.add('active');
-                        this.updateChartWithRange(button.dataset.range);
-                    }
+            // 修正：使用属性选择器来找到所有带 data-range 属性的按钮
+            const rangeButtons = document.querySelectorAll('.chart-controls button[data-range]');
+            rangeButtons.forEach(btn => {
+                // 防止重复绑定事件
+                if (btn.dataset.listenerAttached) return;
+                btn.dataset.listenerAttached = 'true';
+
+                btn.addEventListener('click', () => {
+                    // 再次查询以确保我们操作的是最新的按钮列表
+                    document.querySelectorAll('.chart-controls button[data-range]').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const range = btn.dataset.range;
+                    this.updateChartWithRange(range);
                 });
-                controls.dataset.listenerAttached = 'true';
-            }
+            });
         }
         
         getChartOptions(data) {
-            const historicalData = data.historical || [];
+            const seriesData = data.historical.map(item => [new Date(item.date).getTime(), item.close]);
+            const sma50 = calcSMA(data.historical, 50);
+            const sma200 = calcSMA(data.historical, 200);
+
+            // 修改：动态生成图表标题
+            const latestData = data.historical[data.historical.length - 1];
+            const latestDate = new Date(latestData.date).toLocaleDateString();
+            const latestPrice = Number(latestData.close).toFixed(2);
+            const chartTitle = `${this.ticker} 历史价格 (最新: ${latestDate} 价格 ${latestPrice})`;
+
             return {
-                series: [{
-                    name: '收盘价',
-                    data: historicalData.map(item => [new Date(item.date).getTime(), parseFloat(item.close)])
-                }, {
-                    name: '5日均线',
-                    data: calcSMA(historicalData, 5)
-                }, {
-                    name: '120日均线',
-                    data: calcSMA(historicalData, 120)
-                }],
-                chart: {
-                    type: 'line',
-                    height: '80%',
-                    zoom: { enabled: true },
-                    animations: { enabled: false } // 禁用动画以提高重绘性能
-                },
-                colors: ['#008FFB', '#00E396', '#FEB019'],
-                stroke: { width: [2, 1, 1], curve: 'straight' },
-                xaxis: {
-                    type: 'datetime',
-                    tooltip: { enabled: true }
-                },
+                series: [
+                    { name: '价格', data: seriesData },
+                    { name: '50日均线', data: sma50 },
+                    { name: '200日均线', data: sma200 }
+                ],
+                // 移除: chart: { type: 'line', height: '100%', animations: { enabled: false } },
+                chart: { type: 'line', animations: { enabled: false } }, // 修正：移除 height
+                title: { text: chartTitle, align: 'left' },
+                xaxis: { type: 'datetime' },
                 yaxis: {
-                    labels: {
-                        formatter: function(val) {
-                            return (val !== null && !isNaN(val)) ? Number(val).toFixed(2) : '0.00';
-                        }
-                    },
+                    labels: { formatter: (val) => `$${val.toFixed(2)}` },
                     tooltip: { enabled: true }
                 },
-                tooltip: {
-                    x: { format: 'yyyy-MM-dd' },
-                    y: {
-                        formatter: function(val) {
-                           return (val !== null && !isNaN(val)) ? '$' + Number(val).toFixed(2) : '$0.00';
-                        }
-                    }
-                },
-                legend: {
-                    position: 'top',
-                    horizontalAlign: 'right'
-                },
-                title: {
-                    text: `${data.ticker} 历史价格`,
-                    align: 'left'
-                }
+                stroke: { width: [2, 1, 1], curve: 'straight' },
+                colors: ['#008FFB', '#F2B90C', '#FF4560'],
+                tooltip: { x: { format: 'yyyy-MM-dd' } }
             };
         }
     }
@@ -275,13 +499,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const fullscreenBtn = document.getElementById('fullscreen-chart-btn');
         const ratioFullscreenBtn = document.getElementById('fullscreen-ratio-chart-btn');
         const isFullscreen = !!document.fullscreenElement;
+        const fullscreenContainer = document.fullscreenElement;
 
         // 更新所有全屏按钮的文本
         if (fullscreenBtn) {
-            fullscreenBtn.textContent = isFullscreen && document.fullscreenElement.contains(fullscreenBtn) ? '退出全屏' : '全屏显示';
+            fullscreenBtn.textContent = isFullscreen && fullscreenContainer && fullscreenContainer.contains(fullscreenBtn) ? '退出全屏' : '全屏显示';
         }
         if (ratioFullscreenBtn) {
-            ratioFullscreenBtn.textContent = isFullscreen && document.fullscreenElement.contains(ratioFullscreenBtn) ? '退出全屏' : '全屏显示';
+            ratioFullscreenBtn.textContent = isFullscreen && fullscreenContainer && fullscreenContainer.contains(ratioFullscreenBtn) ? '退出全屏' : '全屏显示';
         }
 
         // 延迟执行，确保DOM更新完毕后图表能获取到正确的容器尺寸
@@ -309,7 +534,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         stockManager = new StockDataManager(ticker.toUpperCase());
         stockManager.fetchStockData();
-        // TODO: 在这里初始化第二个图表的数据和渲染
     } else {
         const container = document.getElementById('apex-chart-container');
         if(container) container.innerHTML = `<h2>请在URL中提供一个股票代码，例如：?ticker=AAPL</h2>`;

@@ -12,43 +12,50 @@
 <body>
     <header></header>
     <main>
-        <section class="stock-chart">
-            <div class="stock-info">
-                <h1 id="stock-name">Loading...</h1>
-                <div class="price">
-                    <span id="stock-price"></span>
-                    <span id="stock-change"></span>
+        <!-- 新增一个容器来包裹两个图表 -->
+        <div class="charts-container">
+            <section class="stock-chart">
+                <div class="stock-info">
+                    <h1 id="stock-name">Loading...</h1>
+                    <!-- 新增：用于显示增长率的容器 -->
+                    <div id="growth-rate-info" class="growth-info"></div>
+                    <div class="price">
+                        <span id="stock-price"></span>
+                        <span id="stock-change"></span>
+                    </div>
                 </div>
-            </div>
-            <div class="chart-controls">
-                <button data-range="1M">1个月</button>
-                <button data-range="6M">6个月</button>
-                <button data-range="YTD">年初至今</button>
-                <button data-range="1Y">1年</button>
-                <button data-range="10Y" class="active">10年</button>
-                <button data-range="MAX">最长</button>
-                <button id="fullscreen-chart-btn" class="fullscreen-btn">全屏显示</button>
-            </div>
-            <!-- 移除了内联样式 -->
-            <div id="apex-chart-container"></div>
-        </section>
+                <div class="chart-controls">
+                    <button data-range="1M">1个月</button>
+                    <button data-range="6M">6个月</button>
+                    <button data-range="YTD">年初至今</button>
+                    <button data-range="1Y">1年</button>
+                    <button data-range="10Y">10年</button>
+                    <!-- 修改：将 active class 移到 "最长" 按钮 -->
+                    <button data-range="MAX" class="active">最长</button>
+                    <button id="fullscreen-chart-btn" class="fullscreen-btn">全屏显示</button>
+                </div>
+                <!-- 移除了内联样式 -->
+                <div id="apex-chart-container"></div>
+            </section>
 
-        <!-- 新增：股票与QQQ比值趋势图表模块 -->
-        <section class="stock-qqq-ratio-chart">
-            <!-- 移除了内联样式 -->
-            <h2>与 QQQ 的比值趋势</h2>
-            <div class="chart-controls">
-                <button data-ratio-range="1M">1个月</button>
-                <button data-ratio-range="6M">6个月</button>
-                <button data-ratio-range="YTD">年初至今</button>
-                <button data-ratio-range="1Y">1年</button>
-                <button data-ratio-range="10Y" class="active">10年</button>
-                <button data-ratio-range="MAX">最长</button>
-                <button id="fullscreen-ratio-chart-btn" class="fullscreen-btn">全屏显示</button>
-            </div>
-            <!-- 移除了内联样式 -->
-            <div id="apex-ratio-chart-container"></div>
-        </section>
+            <!-- 新增：股票与QQQ比值趋势图表模块 -->
+            <section class="stock-qqq-ratio-chart">
+                <!-- 修改：为标题添加ID，以便JS可以修改它 -->
+                <h2 id="ratio-chart-title">与 QQQ 的比值趋势</h2>
+                <div class="chart-controls ratio-chart-controls">
+                    <!-- 新增：为比值图表添加独立的控制按钮 -->
+                    <button data-ratio-range="1M">1个月</button>
+                    <button data-ratio-range="6M">6个月</button>
+                    <button data-ratio-range="YTD">年初至今</button>
+                    <button data-ratio-range="1Y">1年</button>
+                    <button data-ratio-range="10Y">10年</button>
+                    <!-- 修改：将 active class 移到 "最长" 按钮 -->
+                    <button data-ratio-range="MAX" class="active">最长</button>
+                    <button id="fullscreen-ratio-chart-btn" class="fullscreen-btn">全屏显示</button>
+                </div>
+                <div id="apex-ratio-chart-container"></div>
+            </section>
+        </div> <!-- 结束 charts-container -->
 
         <section class="stock-details">
             <div class="tab-navigation">

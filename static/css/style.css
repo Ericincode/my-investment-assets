@@ -133,9 +133,6 @@ main {
 }
 
 section {
-    background-color: #ffffff;
-    border-radius: 8px;
-    padding: 20px;
     margin-top: 20px;
 }
 
@@ -223,24 +220,111 @@ footer {
     display: block;
 }
 
-/* --- 4. 原生全屏样式 --- */
-/* 当 section 元素进入真正的全屏模式时应用这些样式 */
-.stock-chart:fullscreen,
-.stock-qqq-ratio-chart:fullscreen {
+/* --- 4. 股票图表与布局 --- */
+
+/* 4.1. 图表并排显示的 Flexbox 容器 */
+.charts-container {
     display: flex;
-    flex-direction: column;
-    padding: 20px;
-    background-color: #ffffff; /* 确保全屏时有白色背景 */
-    box-sizing: border-box;
-    height: 100%;
-    width: 100%;
+    flex-wrap: wrap; /* 在小屏幕上允许换行 */
+    gap: 2rem;       /* 设置图表之间的间距 */
+    margin-bottom: 2rem;
+    align-items: stretch; /* 关键：让子元素（section）等高 */
 }
 
-/* 在全屏模式下，让图表容器自动伸展以填充所有可用空间 */
+/* 4.2. 统一两个图表<section>的样式 */
+.charts-container > section {
+    flex: 1; /* 每个图表占据一份空间 */
+    min-width: 400px; /* 设置一个最小宽度，防止过度挤压 */
+    
+    /* 统一布局：让 section 自身也成为 flex 容器 */
+    display: flex;
+    flex-direction: column; 
+    
+    /* 统一外观 */
+    background-color: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* 4.3. 统一图表标题样式 */
+.charts-container h1,
+.charts-container h2 {
+    font-size: 1.2em;
+    margin-top: 0;
+    margin-bottom: 8px;
+    flex-shrink: 0; /* 防止标题在 flex 布局中被压缩 */
+}
+
+/* 4.4. 增长率信息样式 */
+.growth-info {
+    font-size: 0.9em;
+    color: #555;
+    margin: 5px 0 10px;
+    min-height: 20px; /* 防止内容刷新时跳动 */
+    flex-shrink: 0; /* 防止被压缩 */
+}
+
+/* 4.5. 图表控制按钮 */
+.chart-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 15px;
+    flex-shrink: 0; /* 防止被压缩 */
+}
+
+.chart-controls button {
+    background-color: #f4f7f6;
+    border: 1px solid #ddd;
+    padding: 6px 12px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.2s;
+}
+
+.chart-controls button:hover {
+    background-color: #e9ecef;
+}
+
+.chart-controls button.active {
+    background-color: #2c3e50;
+    color: #ffffff;
+    border-color: #2c3e50;
+}
+
+.chart-controls .fullscreen-btn {
+    margin-left: auto;
+}
+
+/* 4.6. 实际的图表渲染区域 */
+#apex-chart-container,
+#apex-ratio-chart-container {
+    flex-grow: 1; /* 关键：占据所有剩余的垂直空间 */
+    min-height: 350px; /* 保证图表有一个最小高度 */
+}
+
+
+/* --- 5. 原生全屏样式 --- */
+.stock-chart:fullscreen,
+.stock-qqq-ratio-chart:fullscreen {
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+/* 修正：移除 !important，让 flexbox 正常工作 */
 .stock-chart:fullscreen #apex-chart-container,
 .stock-qqq-ratio-chart:fullscreen #apex-ratio-chart-container {
-    flex-grow: 1; /* 关键：让图表容器占据所有剩余的垂直空间 */
-    height: auto !important; /* 覆盖原有的固定高度 */
-    min-height: 0; /* <-- 新增这一行 */
+    flex-grow: 1;
+    min-height: 0; /* 允许图表在全屏时收缩到比350px更小 */
+}
 
+/* --- 6. 清理旧的/通用的 section 规则 --- */
+/* 确保通用 section 规则不会干扰图表布局 */
+main > section {
+    margin-top: 20px;
 }

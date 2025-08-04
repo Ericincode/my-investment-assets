@@ -1,0 +1,11 @@
+<td class="text-right">
+    {% if return_value is not None %}
+        {% if return_value > 0 %}
+            <span class="text-success">+{{ return_value|floatformat:2 }}%</span>
+        {% else %}
+            <span class="text-danger">{{ return_value|floatformat:2 }}%</span>
+        {% endif %}
+    {% else %}
+        <span class="text-muted">N/A</span>
+    {% endif %}
+</td>

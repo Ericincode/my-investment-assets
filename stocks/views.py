@@ -134,15 +134,37 @@ def check_download_status(request, ticker):
         return JsonResponse({'error': str(e)}, status=500)
 
 def stock_vs_qqq_ratio(request, ticker):
-    """计算并返回某股票与QQQ的价格比率"""
-    prices = HistoricalPrice.objects.filter(stock__ticker__in=[ticker.upper(), 'QQQ']).order_by('date')
+    """
+    计算并返回指定股票与QQQ的价格比率。
+    """
+    # 1. 一次性查询两只股票的价格数据，提高效率
+    prices = HistoricalPrice.objects.filter(
+        stock__ticker__in=[ticker.upper(), 'QQQ']
+    ).order_by('date').values('stock__ticker', 'date', 'close')
+
+    # 2. 将数据整理成字典，格式: {'AAPL': {date: close}, 'QQQ': {date: close}}
     data = {}
     for p in prices:
-        data.setdefault(p.stock.ticker, {})[p.date] = p.close
+        ticker_symbol = p['stock__ticker']
+        if ticker_symbol not in data:
+            data[ticker_symbol] = {}
+        data[ticker_symbol][p['date']] = p['close']
 
-    dates = sorted(set(data.get(ticker.upper(), {}).keys()) & set(data.get('QQQ', {}).keys()))
-    ratio = [
-        {'date': d.strftime('%Y-%m-%d'), 'ratio': data[ticker.upper()][d] / data['QQQ'][d]}
-        for d in dates if data['QQQ'].get(d) and data['QQQ'][d] != 0
-    ]
-    return JsonResponse({'ratio': ratio})
+    stock_prices = data.get(ticker.upper(), {})
+    qqq_prices = data.get('QQQ', {})
+
+    # 3. 找到共同的交易日并计算比值
+    common_dates = sorted(stock_prices.keys() & qqq_prices.keys())
+    
+    ratio_data = []
+    for d in common_dates:
+        stock_close = stock_prices.get(d)
+        qqq_close = qqq_prices.get(d)
+        # 确保分母不为0
+        if stock_close is not None and qqq_close is not None and qqq_close > 0:
+            ratio_data.append({
+                'date': d.strftime('%Y-%m-%d'),
+                'ratio': float(stock_close) / float(qqq_close)
+            })
+
+    return JsonResponse({'ratio_data': ratio_data})

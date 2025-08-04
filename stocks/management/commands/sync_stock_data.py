@@ -1,13 +1,12 @@
 # 文件名: stocks/management/commands/sync_stock_data.py
-# 【最终简化版】完整代码
+# 【最终简化版】完整代码 - 已修复
 
 import pandas as pd
 from datetime import date, timedelta
 from django.core.management.base import BaseCommand
 from django.db import models
-# 注意：不再导入 TempPriceCache
 from stocks.models import Stock, HistoricalPrice
-from django.db.models import Max, F
+from django.db.models import Max
 import time
 import yfinance as yf
 import logging
@@ -32,18 +31,15 @@ def download_and_save_stock_data(ticker: str):
         # 步骤 1: 更新查询计数并获取股票对象
         stock_obj = None
         with transaction.atomic():
-            # 使用 select_for_update 来锁定行，确保计数准确
             stock_to_update = Stock.objects.select_for_update().get(ticker=ticker)
             stock_to_update.query_count += 1
             stock_to_update.last_queried = timezone.now()
             stock_to_update.save()
             
-            # 保存成功后，重新获取对象以获得最新的计数值
             stock_obj = Stock.objects.get(ticker=ticker)
-            # 您的要求：明确打印出新的查询次数
             logger.info(f"股票 {ticker} 的查询次数已更新为: {stock_obj.query_count}")
 
-        # 步骤 2: 下载逻辑（不再有任何缓存检查）
+        # 步骤 2: 下载逻辑
         latest_date = HistoricalPrice.objects.filter(stock=stock_obj).aggregate(max_date=Max('date'))['max_date']
         
         if latest_date:
@@ -74,16 +70,12 @@ def save_data_to_db(stock_obj, hist_data):
     new_records = []
     for index, row in hist_data.iterrows():
         try:
-            # 修复：使用 .iloc[0] 获取具体的数值，而不是 Series
             close_value = row['Close']
-            if hasattr(close_value, 'iloc'):
-                close_value = close_value.iloc[0]
+            if hasattr(close_value, 'iloc'): close_value = close_value.iloc[0]
             
             volume_value = row['Volume']
-            if hasattr(volume_value, 'iloc'):
-                volume_value = volume_value.iloc[0]
+            if hasattr(volume_value, 'iloc'): volume_value = volume_value.iloc[0]
             
-            # 安全地转换数值
             close_price = float(close_value) if pd.notna(close_value) and close_value is not None else None
             volume = int(float(volume_value)) if pd.notna(volume_value) and volume_value is not None else None
             
@@ -95,7 +87,6 @@ def save_data_to_db(stock_obj, hist_data):
                     volume=volume
                 ))
         except (ValueError, TypeError, AttributeError) as e:
-            # 跳过有问题的记录
             print(f"跳过问题记录 {index}: {e}")
             continue
     
@@ -127,34 +118,15 @@ class Command(BaseCommand):
         specific_ticker = options.get('ticker')
 
         if specific_ticker:
-            # 单点更新模式 (由 views.py 触发)
             self.stdout.write(self.style.MIGRATE_HEADING(f"\n--- 单点更新模式：正在处理 {specific_ticker} ---"))
             result = download_and_save_stock_data(specific_ticker.upper())
             self.stdout.write(f"任务完成 -> {result}")
         else:
-            # 批量更新模式 (从命令行直接运行时)
             self.sync_all_stock_lists()
             self.update_hot_stocks_concurrently(options['limit'], options['max_workers'])
 
         elapsed = time.time() - start_time
         self.stdout.write(f"\n=== 全部任务完成，总耗时: {elapsed:.1f}秒 ===")
-
-    def update_hot_stocks_concurrently(self, limit, max_workers):
-        """并发下载热门股票"""
-        self.stdout.write(self.style.MIGRATE_HEADING('\n--- 批量并发更新热门股票 ---'))
-        hot_stocks = Stock.objects.filter(query_count__gt=0, is_active=True).order_by('-query_count')[:limit]
-        if not hot_stocks.exists():
-            self.stdout.write('没有热门股票需要更新。'); return
-        tickers_to_update = [stock.ticker for stock in hot_stocks]
-        self.stdout.write(f'将为 {len(tickers_to_update)} 只热门股票并发检查更新: {tickers_to_update}')
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            future_to_ticker = {executor.submit(download_and_save_stock_data, ticker): ticker for ticker in tickers_to_update}
-            for future in as_completed(future_to_ticker):
-                try: 
-                    self.stdout.write(f"任务完成 -> {future.result()}")
-                except Exception as exc:
-                    ticker = future_to_ticker[future]
-                    self.stdout.write(self.style.ERROR(f'处理 {ticker} 时线程出现异常: {exc}'))
     
     def sync_all_stock_lists(self):
         """同步所有交易所的股票列表"""
@@ -193,3 +165,31 @@ class Command(BaseCommand):
     def _get_nyse_exchange_name(self, code):
         """NYSE系交易所代码映射"""
         return {'N': 'NYSE', 'A': 'NYSE_AMERICAN', 'P': 'NYSE_ARCA'}.get(code, 'OTHER')
+
+    def update_hot_stocks_concurrently(self, limit, max_workers):
+        """并发下载热门股票，并确保SPY和QQQ被更新"""
+        self.stdout.write(self.style.MIGRATE_HEADING('\n--- 批量并发更新热门股票 ---'))
+        
+        # 1. 获取热门股票
+        hot_stocks_query = Stock.objects.filter(query_count__gt=0, is_active=True).order_by('-query_count')[:limit]
+        hot_tickers = {stock.ticker for stock in hot_stocks_query}
+        
+        # 2. 将热门股与核心ETF合并，并去重
+        tickers_to_update_set = hot_tickers.union({'SPY', 'QQQ'})
+        tickers_to_update = list(tickers_to_update_set)
+        
+        if not tickers_to_update:
+            self.stdout.write('没有需要更新的股票。')
+            return
+        
+        self.stdout.write(f'将为 {len(tickers_to_update)} 只股票并发检查更新: {tickers_to_update}')
+        
+        # 3. 使用线程池并发执行下载
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            future_to_ticker = {executor.submit(download_and_save_stock_data, ticker): ticker for ticker in tickers_to_update}
+            for future in as_completed(future_to_ticker):
+                try: 
+                    self.stdout.write(f"任务完成 -> {future.result()}")
+                except Exception as exc:
+                    ticker = future_to_ticker[future]
+                    self.stdout.write(self.style.ERROR(f'处理 {ticker} 时线程出现异常: {exc}'))

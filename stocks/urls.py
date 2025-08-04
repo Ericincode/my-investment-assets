@@ -18,7 +18,7 @@ urlpatterns = [
     # 修复：确保这个 URL 指向我们唯一的、功能完备的视图函数 `stock_detail_api`
     path('api/stocks/<str:ticker>/', views.stock_detail_api, name='stock_detail_api'),
     
-    path('api/stock_vs_qqq_ratio/<str:ticker>/', views.stock_vs_qqq_ratio, name='stock_vs_qqq_ratio'),
+    path('api/stock-vs-qqq-ratio/<str:ticker>/', views.stock_vs_qqq_ratio, name='stock-vs-qqq-ratio'),
 
     # 新增：确保检查状态的 URL 也能正常工作
     path('api/check-status/<str:ticker>/', views.check_download_status, name='check_download_status'),
