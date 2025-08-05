@@ -11,11 +11,15 @@ class Stock(models.Model):
 
     # 公司名称，例如 "Apple Inc."。
     name = models.CharField(max_length=255)
+    chinese_keywords = models.CharField(max_length=255, blank=True, null=True, help_text="中文关键词，用于搜索")
+    exchange = models.CharField(max_length=50, db_index=True)
 
-    chinese_keywords = models.CharField(max_length=255, blank=True, help_text="逗号分隔的中文名称、别名或关键词")
+    # === 新增/恢复：来自交易所文件的详细信息 ===
+    market_category = models.CharField(max_length=1, blank=True, null=True, help_text="市场分类 (来自NASDAQ)")
+    financial_status = models.CharField(max_length=1, blank=True, null=True, help_text="财务状况 (来自NASDAQ)")
 
-    # 交易的交易所，例如 "NASDAQ"。
-    exchange = models.CharField(max_length=50, null=True, blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    # 股票代码，例如 "AAPL"。这是主键。
 
     # 当前或最近一次知晓的价格。
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
@@ -38,12 +42,25 @@ class Stock(models.Model):
     # 这条数据在我们数据库中最后一次更新的时间戳。
     last_updated = models.DateTimeField(auto_now=True)
 
+    # === 新增：公司信息 ===
+    logo = models.URLField(max_length=1024, null=True, blank=True, help_text="公司Logo的URL")
+    weburl = models.URLField(max_length=1024, null=True, blank=True, help_text="公司官方网站地址")
+
+    # === 新增：不同时间维度的收益率 ===
+    return_1m = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="1个月收益率")
+    return_6m = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="6个月收益率")
+    return_1y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="1年收益率")
+    return_3y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="3年收益率")
+    return_5y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="5年收益率")
+    return_10y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="10年收益率")
+
     listed_date = models.DateField(null=True, blank=True, help_text="上市日期")
     delisted_date = models.DateField(null=True, blank=True, help_text="退市日期")
     is_active = models.BooleanField(default=True, help_text="是否在市")
     financial_status = models.CharField(max_length=10, blank=True, null=True)
     market_category = models.CharField(max_length=10, blank=True, null=True)
     test_issue = models.CharField(max_length=1, blank=True, null=True)
+    is_etf = models.BooleanField(default=False, help_text="是否为ETF")
 
     # === 新增：查询统计字段 ===
     query_count = models.PositiveIntegerField(default=0, db_index=True, help_text="总查询次数")

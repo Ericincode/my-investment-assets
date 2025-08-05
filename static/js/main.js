@@ -70,8 +70,43 @@ function initializeHeaderScripts() {
     }
 }
 
+function renderTopStocks(sortField = 'return_5y') {
+    fetch(`/api/top-stocks/?sort=${sortField}`)
+        .then(res => res.json())
+        .then(data => {
+            const tbody = document.querySelector('#top-stocks-table tbody');
+            tbody.innerHTML = '';
+            data.forEach(stock => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><img src="${stock.logo || ''}" alt="logo" style="width:32px;height:32px;"></td>
+                    <td>${stock.ticker}</td>
+                    <td>${stock.name}</td>
+                    <td>${stock.industry || ''}</td>
+                    <td>${stock.price ?? '-'}</td>
+                    <td>${stock.return_1m ?? '-'}</td>
+                    <td>${stock.return_6m ?? '-'}</td>
+                    <td>${stock.return_1y ?? '-'}</td>
+                    <td>${stock.return_3y ?? '-'}</td>
+                    <td>${stock.return_5y ?? '-'}</td>
+                    <td>${stock.return_10y ?? '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        });
+}
+
 // --- 主执行流程 ---
 document.addEventListener('DOMContentLoaded', function() {
     loadComponent('/static/components/header.html', 'header', initializeHeaderScripts);
     loadComponent('/static/components/footer.html', 'footer');
+    renderTopStocks();
+
+    document.querySelectorAll('.top-stocks th.sortable').forEach(th => {
+        th.style.cursor = 'pointer';
+        th.addEventListener('click', function() {
+            const sortField = th.getAttribute('data-sort');
+            renderTopStocks(sortField);
+        });
+    });
 });

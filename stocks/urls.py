@@ -22,4 +22,7 @@ urlpatterns = [
 
     # 新增：确保检查状态的 URL 也能正常工作
     path('api/check-status/<str:ticker>/', views.check_download_status, name='check_download_status'),
+
+    # 新增：热门股票 API
+    path('api/top-stocks/', views.top_stocks, name='top_stocks'),
 ]

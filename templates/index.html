@@ -26,6 +26,27 @@
             <h2>投资学院</h2>
             <p>精选的教育文章和指南将显示在此处。</p>
         </section>
+        <section class="top-stocks">
+            <h2>市值前20股票（按增长率排序）</h2>
+            <table id="top-stocks-table">
+                <thead>
+                    <tr>
+                        <th>Logo</th>
+                        <th>代码</th>
+                        <th>名称</th>
+                        <th>行业</th>
+                        <th>当前价格</th>
+                        <th class="sortable" data-sort="return_1m">1月增长率</th>
+                        <th class="sortable" data-sort="return_6m">6月增长率</th>
+                        <th class="sortable" data-sort="return_1y">1年增长率</th>
+                        <th class="sortable" data-sort="return_3y">3年增长率</th>
+                        <th class="sortable" data-sort="return_5y">5年增长率</th>
+                        <th class="sortable" data-sort="return_10y">10年增长率</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
     </main>
     <footer></footer>
     <script src="{% static 'js/main.js' %}"></script>

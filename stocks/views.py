@@ -168,3 +168,30 @@ def stock_vs_qqq_ratio(request, ticker):
             })
 
     return JsonResponse({'ratio_data': ratio_data})
+
+def top_stocks(request):
+    """获取热门股票列表"""
+    sort_field = request.GET.get('sort', 'return_5y')
+    allowed_fields = [
+        'return_1m', 'return_6m', 'return_1y', 'return_3y', 'return_5y', 'return_10y'
+    ]
+    if sort_field not in allowed_fields:
+        sort_field = 'return_5y'
+    stocks = Stock.objects.filter(is_active=True).exclude(market_cap__isnull=True)
+    stocks = stocks.order_by(f'-{sort_field}')[:20]
+    data = []
+    for s in stocks:
+        data.append({
+            'logo': s.logo,
+            'ticker': s.ticker,
+            'name': s.name,
+            'industry': getattr(s, 'industry', ''),  # 如果有行业字段
+            'price': s.price,
+            'return_1m': s.return_1m,
+            'return_6m': s.return_6m,
+            'return_1y': s.return_1y,
+            'return_3y': s.return_3y,
+            'return_5y': s.return_5y,
+            'return_10y': s.return_10y,
+        })
+    return JsonResponse(data, safe=False)
