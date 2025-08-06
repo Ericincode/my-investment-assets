@@ -31,17 +31,21 @@
             <table id="top-stocks-table">
                 <thead>
                     <tr>
-                        <th>Logo</th>
-                        <th>代码</th>
-                        <th>名称</th>
-                        <th>行业</th>
-                        <th>当前价格</th>
-                        <th class="sortable" data-sort="return_1m">1月增长率</th>
-                        <th class="sortable" data-sort="return_6m">6月增长率</th>
-                        <th class="sortable" data-sort="return_1y">1年增长率</th>
-                        <th class="sortable" data-sort="return_3y">3年增长率</th>
-                        <th class="sortable" data-sort="return_5y">5年增长率</th>
-                        <th class="sortable" data-sort="return_10y">10年增长率</th>
+                        <th rowspan="2">Logo</th>
+                        <th rowspan="2">代码</th>
+                        <th rowspan="2">名称/关键词</th>
+                        <th rowspan="2">行业</th>
+                        <th rowspan="2">市值</th>
+                        <th rowspan="2">当前价格</th>
+                        <th colspan="6" style="text-align:center;">增长率</th>
+                    </tr>
+                    <tr>
+                        <th class="sortable" data-sort="return_1m">1月</th>
+                        <th class="sortable" data-sort="return_6m">6月</th>
+                        <th class="sortable" data-sort="return_1y">1年</th>
+                        <th class="sortable" data-sort="return_3y">3年</th>
+                        <th class="sortable" data-sort="return_5y">5年</th>
+                        <th class="sortable" data-sort="return_10y">10年</th>
                     </tr>
                 </thead>
                 <tbody></tbody>

@@ -70,6 +70,30 @@ function initializeHeaderScripts() {
     }
 }
 
+function formatMarketCap(val) {
+    if (!val) return '-';
+    // 支持字符串和数字
+    let num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+    if (isNaN(num)) return val;
+    if (num >= 1e12) return (num / 1e12).toFixed(2) + 'T';
+    if (num >= 1e9)  return (num / 1e9).toFixed(2) + 'B';
+    if (num >= 1e6)  return (num / 1e6).toFixed(2) + 'M';
+    if (num >= 1e4)  return (num / 1e3).toFixed(2) + 'K';
+    return num.toLocaleString();
+}
+
+function formatPercentOrTimes(val) {
+    if (val === null || val === undefined) return '-';
+    const num = parseFloat(val);
+    if (isNaN(num)) return '-';
+    if (num >= 10) {
+        // 超过1000%（即10）显示为“x倍”，最多三位数字
+        return num >= 100 ? `${Math.round(num)}倍` : `${num.toFixed(1)}倍`;
+    }
+    // 小于10时显示为百分比，最多三位数字
+    return `${(num * 100).toFixed(num * 100 >= 100 ? 0 : 2)}%`;
+}
+
 function renderTopStocks(sortField = 'return_5y') {
     fetch(`/api/top-stocks/?sort=${sortField}`)
         .then(res => res.json())
@@ -79,19 +103,33 @@ function renderTopStocks(sortField = 'return_5y') {
             data.forEach(stock => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><img src="${stock.logo || ''}" alt="logo" style="width:32px;height:32px;"></td>
-                    <td>${stock.ticker}</td>
-                    <td>${stock.name}</td>
-                    <td>${stock.industry || ''}</td>
-                    <td>${stock.price ?? '-'}</td>
-                    <td>${stock.return_1m ?? '-'}</td>
-                    <td>${stock.return_6m ?? '-'}</td>
-                    <td>${stock.return_1y ?? '-'}</td>
-                    <td>${stock.return_3y ?? '-'}</td>
-                    <td>${stock.return_5y ?? '-'}</td>
-                    <td>${stock.return_10y ?? '-'}</td>
+                    <td><img src="${stock.logo || ''}" alt="logo" style="width:32px;height:32px;border-radius:6px;background:#f5f5f5;"></td>
+                    <td style="font-weight:bold;">${stock.ticker}</td>
+                    <td>
+                        <div style="font-size:1.05em;">
+                            <span style="color:#1976d2;cursor:pointer;text-decoration:underline;" class="stock-keyword" data-ticker="${stock.ticker}">
+                                ${stock.chinese_keywords || stock.name || '-'}
+                            </span>
+                        </div>
+                        <div style="font-size:0.85em;color:#888;">${stock.name}</div>
+                    </td>
+                    <td style="color:#555;">${stock.industry || ''}</td>
+                    <td class="market-cap-cell">${formatMarketCap(stock.market_cap)}</td>
+                    <td style="font-family:monospace;">${stock.price ?? '-'}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_1m)}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_6m)}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_1y)}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_3y)}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_5y)}</td>
+                    <td style="color:#388e3c;">${formatPercentOrTimes(stock.return_10y)}</td>
                 `;
                 tbody.appendChild(tr);
+            }); // ← 这里补上闭合大括号
+            // 绑定点击事件：跳转详情页
+            tbody.querySelectorAll('.stock-keyword').forEach(el => {
+                el.addEventListener('click', () => {
+                    window.location.href = `/pages/stock.html?ticker=${el.dataset.ticker}`;
+                });
             });
         });
 }

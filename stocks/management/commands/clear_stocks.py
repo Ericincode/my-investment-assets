@@ -11,11 +11,13 @@ class Command(BaseCommand):
         parser.add_argument('--debug', action='store_true', help='显示调试信息')
         parser.add_argument('--field', type=str, help='指定要清空的字段（仅限Stock表）')
         parser.add_argument('--table', type=str, choices=['stock', 'historical'], help='只清空指定表')
+        parser.add_argument('--delete-special', action='store_true', help='删除特殊类型股票（如warrant、preferred等）')
 
     def handle(self, *args, **options):
         debug = options.get('debug', False)
         field = options.get('field')
         table = options.get('table')
+        delete_special = options.get('delete_special', False)
 
         self.stdout.write(self.style.SUCCESS('=== 股票数据清理工具 ==='))
 
@@ -30,6 +32,33 @@ class Command(BaseCommand):
                 with connection.cursor() as cursor:
                     cursor.execute('SELECT 1')
                 self.stdout.write('✅ 数据库连接正常')
+
+            # 删除特殊类型股票
+            if delete_special:
+                self.stdout.write(self.style.WARNING('⚠️  即将删除特殊类型股票（如warrant、preferred等）'))
+                if not options['confirm']:
+                    self.stdout.write(self.style.WARNING('💡 如要确认操作，请加 --confirm'))
+                    return
+                keywords = [
+                    'warrant', 'preferred', 'bond', 'note', 'unit', 'right', 'spac',
+                    'etn', 'adr', 'depositary receipt', 'structured product', 'temp', 'test', 'swap',
+                    'future', 'option'
+                ]
+                qs = Stock.objects.all()
+                to_delete = []
+                for stock in qs:
+                    name = (stock.name or '').lower()
+                    if any(kw in name for kw in keywords):
+                        to_delete.append(stock)
+                    if hasattr(stock, 'test_issue') and stock.test_issue == 'Y':
+                        to_delete.append(stock)
+                to_delete = list(set(to_delete))
+                self.stdout.write(f'将删除 {len(to_delete)} 条特殊类型股票记录...')
+                for stock in to_delete:
+                    self.stdout.write(f'删除: {stock.ticker} - {stock.name}')
+                    stock.delete()
+                self.stdout.write(self.style.SUCCESS('删除完成。'))
+                return
 
             # 清空某个字段
             if field:
@@ -128,8 +157,8 @@ class Command(BaseCommand):
 
 
 # # 执行命令示例
-# # 清空所有数据（股票和历史价格）
-# python manage.py clear_stocks --confirm
+# # 清空所有数据（股票和历史价格）python manage.py clear_stocks
+#  --confirm
 # # 只清空股票表
 # python manage.py clear_stocks --table stock --confirm
 # # 只清空历史价格表

@@ -5,3 +5,4 @@ pandas
 lxml
 yfinance
 googletrans==4.0.0-rc1
+psycopg2-binary

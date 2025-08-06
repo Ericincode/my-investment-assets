@@ -185,13 +185,15 @@ def top_stocks(request):
             'logo': s.logo,
             'ticker': s.ticker,
             'name': s.name,
-            'industry': getattr(s, 'industry', ''),  # 如果有行业字段
+            'chinese_keywords': s.chinese_keywords,  # 新增
+            'industry': getattr(s, 'industry', ''),
+            'market_cap': s.market_cap,  # 新增
             'price': s.price,
-            'return_1m': s.return_1m,
-            'return_6m': s.return_6m,
-            'return_1y': s.return_1y,
-            'return_3y': s.return_3y,
-            'return_5y': s.return_5y,
-            'return_10y': s.return_10y,
+            'return_1m': float(s.return_1m) if s.return_1m is not None else None,
+            'return_6m': float(s.return_6m) if s.return_6m is not None else None,
+            'return_1y': float(s.return_1y) if s.return_1y is not None else None,
+            'return_3y': float(s.return_3y) if s.return_3y is not None else None,
+            'return_5y': float(s.return_5y) if s.return_5y is not None else None,
+            'return_10y': float(s.return_10y) if s.return_10y is not None else None,
         })
     return JsonResponse(data, safe=False)

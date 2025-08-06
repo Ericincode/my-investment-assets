@@ -30,9 +30,10 @@ class Stock(models.Model):
     # 价格变化的百分比。
     change_percent = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
 
-    # 公司市值，例如 "2.81T"。
-    market_cap = models.CharField(max_length=50, null=True, blank=True)
-
+    # --- 关键改动 ---
+    # market_cap 从 CharField 改为 BigIntegerField，存储纯数字，便于排序和计算
+    market_cap = models.BigIntegerField(null=True, blank=True, db_index=True, help_text="公司市值(纯数字)")
+    
     # 市盈率。
     pe_ratio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 

@@ -328,3 +328,39 @@ footer {
 main > section {
     margin-top: 20px;
 }
+
+/* --- 7. 顶部股票表格样式 --- */
+#top-stocks-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    background: #fff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    border-radius: 8px;
+    overflow: hidden;
+}
+#top-stocks-table th, #top-stocks-table td {
+    padding: 10px 8px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+}
+#top-stocks-table th {
+    background: #f7f7fa;
+    font-weight: 600;
+    color: #333;
+}
+#top-stocks-table tr:hover {
+    background: #f5faff;
+}
+.stock-keyword {
+    transition: color 0.2s;
+}
+.stock-keyword:hover {
+    color: #1565c0;
+}
+.market-cap-cell {
+    font-weight: bold;
+    color: #1976d2;
+    font-family: 'Segoe UI', Arial, sans-serif;
+    letter-spacing: 1px;
+}
