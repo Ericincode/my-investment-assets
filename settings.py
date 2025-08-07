@@ -8,7 +8,7 @@ class StockAdmin(admin.ModelAdmin):
     """
     list_display = (
         'ticker', 'name', 'chinese_keywords', 'exchange', 'price', 'market_cap',
-         'is_active', 'last_updated'
+        'is_active', 
     )
     search_fields = ('ticker', 'name', 'chinese_keywords', 'exchange')
     list_filter = ('exchange', 'is_active')

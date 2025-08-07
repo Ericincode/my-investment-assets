@@ -1,53 +1,34 @@
+# 文件路径: stocks/models.py
+# 【最终精简版】
+
 from django.db import models
-from django.utils import timezone
-from datetime import timedelta
 
 class Stock(models.Model):
     """
-    代表一只股票的静态信息和当前数据快照。
+    代表一只股票的核心信息，专为长期投资者设计。
     """
     # 股票代码，例如 "AAPL"。这是唯一的标识符。
     ticker = models.CharField(max_length=10, primary_key=True)
 
-    # 公司名称，例如 "Apple Inc."。
-    name = models.CharField(max_length=255)
+    # --- 公司基本信息 (主要来自 Finnhub) ---
+    name = models.CharField(max_length=255, help_text="公司名称")
     chinese_keywords = models.CharField(max_length=255, blank=True, null=True, help_text="中文关键词，用于搜索")
-    exchange = models.CharField(max_length=50, db_index=True)
-
-    # === 新增/恢复：来自交易所文件的详细信息 ===
-    market_category = models.CharField(max_length=1, blank=True, null=True, help_text="市场分类 (来自NASDAQ)")
-    financial_status = models.CharField(max_length=1, blank=True, null=True, help_text="财务状况 (来自NASDAQ)")
-
-    is_active = models.BooleanField(default=True, db_index=True)
-    # 股票代码，例如 "AAPL"。这是主键。
-
-    # 当前或最近一次知晓的价格。
-    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    # 相比前一天的价格变化。
-    change = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    # 价格变化的百分比。
-    change_percent = models.DecimalField(max_digits=8, decimal_places=4, null=True, blank=True)
-
-    # --- 关键改动 ---
-    # market_cap 从 CharField 改为 BigIntegerField，存储纯数字，便于排序和计算
-    market_cap = models.BigIntegerField(null=True, blank=True, db_index=True, help_text="公司市值(纯数字)")
-    
-    # 市盈率。
-    pe_ratio = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    # 每股收益。
-    eps = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-
-    # 这条数据在我们数据库中最后一次更新的时间戳。
-    last_updated = models.DateTimeField(auto_now=True)
-
-    # === 新增：公司信息 ===
+    exchange = models.CharField(max_length=50, db_index=True, help_text="交易所")
+    country = models.CharField(max_length=50, blank=True, null=True, help_text="公司所在国家")
+    finnhub_industry = models.CharField(max_length=100, blank=True, null=True, help_text="Finnhub行业分类")
+    ipo = models.DateField(null=True, blank=True, help_text="上市日期")
     logo = models.URLField(max_length=1024, null=True, blank=True, help_text="公司Logo的URL")
     weburl = models.URLField(max_length=1024, null=True, blank=True, help_text="公司官方网站地址")
+    phone = models.CharField(max_length=50, blank=True, null=True, help_text="公司电话")
+    market_cap = models.BigIntegerField(null=True, blank=True, db_index=True, help_text="公司市值(完整数值)")
 
-    # === 新增：不同时间维度的收益率 ===
+    # --- 核心价格与状态 ---
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text="最新收盘价")
+    is_active = models.BooleanField(default=True, db_index=True, help_text="是否为活跃交易的股票")
+    is_etf = models.BooleanField(default=False, help_text="是否为ETF")
+    last_updated = models.DateTimeField(auto_now=True, help_text="此条记录在数据库中最后一次更新的时间")
+
+    # --- 长期收益率 ---
     return_1m = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="1个月收益率")
     return_6m = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="6个月收益率")
     return_1y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="1年收益率")
@@ -55,22 +36,19 @@ class Stock(models.Model):
     return_5y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="5年收益率")
     return_10y = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True, help_text="10年收益率")
 
-    listed_date = models.DateField(null=True, blank=True, help_text="上市日期")
-    delisted_date = models.DateField(null=True, blank=True, help_text="退市日期")
-    is_active = models.BooleanField(default=True, help_text="是否在市")
-    financial_status = models.CharField(max_length=10, blank=True, null=True)
-    market_category = models.CharField(max_length=10, blank=True, null=True)
-    test_issue = models.CharField(max_length=1, blank=True, null=True)
-    is_etf = models.BooleanField(default=False, help_text="是否为ETF")
-
-    # === 新增：查询统计字段 ===
+    # --- 查询统计字段 ---
     query_count = models.PositiveIntegerField(default=0, db_index=True, help_text="总查询次数")
     last_queried = models.DateTimeField(null=True, blank=True, help_text="最后查询时间")
 
+    # --- 兼容旧列表同步脚本的字段 ---
+    financial_status = models.CharField(max_length=10, blank=True, null=True)
+    market_category = models.CharField(max_length=10, blank=True, null=True)
+    
     class Meta:
         indexes = [
             models.Index(fields=['ticker', 'is_active']),
-            models.Index(fields=['-query_count', 'is_active']),  # 热度排序
+            models.Index(fields=['-query_count', 'is_active']),
+            models.Index(fields=['-market_cap', 'is_active']),
         ]
 
     def __str__(self):
@@ -79,18 +57,13 @@ class Stock(models.Model):
 
 class HistoricalPrice(models.Model):
     """
-    优化版历史价格数据，只存储收盘价
+    【已简化】存储股票的历史收盘价和交易量。
     """
     stock = models.ForeignKey(Stock, on_delete=models.CASCADE, related_name='historical_prices')
     date = models.DateField()
     
-    # 价格字段 - 设为可空，只有收盘价是必需的
-    open = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    high = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    low = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
-    close = models.DecimalField(max_digits=10, decimal_places=2)  # 收盘价必需
-    
-    # 当天的交易量。
+    # 只保留收盘价和交易量
+    close = models.DecimalField(max_digits=10, decimal_places=2)
     volume = models.BigIntegerField(null=True, blank=True)
 
     class Meta:
@@ -103,4 +76,3 @@ class HistoricalPrice(models.Model):
 
     def __str__(self):
         return f"{self.stock.ticker} on {self.date}: ${self.close}"
-
